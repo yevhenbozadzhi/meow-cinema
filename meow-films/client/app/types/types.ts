@@ -1,0 +1,18 @@
+export type Favorite = {
+  movieId: string;
+  title?: string;
+  poster_path?: string;
+  release_date?: string;
+  vote_average?: number;
+  genres?: { id: number; name: string }[];
+  overview?: string;
+  videos?: { key: string }[];
+  images?: { file_path: string }[];
+  backdrop_path?: string;
+  original_language?: string;
+  original_title?: string;
+  popularity?: number;
+  vote_count?: number;
+  video?: boolean;
+  adult?: boolean;
+};

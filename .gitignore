@@ -1,0 +1,14 @@
+node_modules/
+.env
+.env.*
+!.env.example
+
+.DS_Store
+*.log
+
+# Next.js
+meow-films/client/.next/
+meow-films/client/out/
+
+# Prisma
+meow-films/server/src/generated/

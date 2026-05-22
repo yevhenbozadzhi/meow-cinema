@@ -1,0 +1,106 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  password      String
+  createdAt     DateTime       @default(now())
+  profile       Profile?
+  refreshTokens RefreshToken[]
+  hostedRooms   Room[]         @relation("Room_hostUser")
+  roomMembers   RoomMember[]
+  favorites Favorite[]
+}
+
+model Profile {
+  id        String  @id @default(uuid())
+  username  String  @unique
+  avatarUrl String?
+  userId    String  @unique
+  user      User    @relation(fields: [userId], references: [id])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+
+enum RoomStatus {
+  OPEN
+  CLOSED
+}
+enum RoomRole {
+  HOST
+  MEMBER
+}
+
+enum RoomEventType {
+  PLAY
+  PAUSE
+  SEEK
+  CHAT_MESSAGE
+  JOIN
+  LEAVE
+}
+
+
+model Room {
+  id           String       @id @default(uuid())
+  hostUserId   String
+  hostUser     User         @relation("Room_hostUser",fields: [hostUserId], references: [id], onDelete: Cascade)
+  status       RoomStatus   @default(OPEN)
+  movieId      String
+  movieTitle   String
+  moviePoster  String?
+  createdAt    DateTime     @default(now())
+  members      RoomMember[]
+  events       RoomEvent[]
+  @@index([hostUserId])
+}
+
+model RoomMember {
+  roomId       String
+  userId       String
+  role         RoomRole     @default(MEMBER)
+  joinedAt     DateTime     @default(now())
+  room         Room         @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([roomId, userId])
+  @@index([userId])
+}
+
+model RoomEvent {
+  id           String       @id @default(uuid())
+  roomId       String
+  type         RoomEventType
+  payload      Json
+  createdAt    DateTime     @default(now())
+  room         Room         @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  @@index([roomId, createdAt])
+}
+
+model Favorite {
+  id String @id @default(uuid())
+  movieId String 
+  createdAt DateTime @default(now())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, movieId])
+}
