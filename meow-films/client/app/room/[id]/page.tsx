@@ -2,14 +2,16 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { use, useEffect, useRef, useState } from "react";
+import { use, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import ReactPlayer from "react-player";
 import { RemotePlayback, useRoomSocket } from "@/lib/useRoomSocket";
 import { Room, TmdbVideo } from "@/lib/types";
 import { ArrowLeftIcon } from "lucide-react";
 
-const SEEK_THRESHOLD_SEC = 1.5;
+const REMOTE_GUARD_MS = 500;
+/** Only jump timeline when local and remote time differ more than this (seconds). */
+const SYNC_TIME_THRESHOLD_SEC = 2;
 
 function pickYouTubeTrailerSrc(movie: {
   videos?: { results?: TmdbVideo[] };
@@ -34,8 +36,7 @@ export default function RoomPage({
   const router = useRouter();
   const playerRef = useRef<HTMLVideoElement | null>(null);
   const isRemoteAction = useRef(false);
-  const lastTimeRef = useRef(0);
-  const seekDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const remoteGuardRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { id } = use(params);
 
@@ -51,23 +52,36 @@ export default function RoomPage({
     if (el) {
       el.currentTime = time;
     }
-    lastTimeRef.current = time;
   };
 
-  const handleRemotePlayback = (payload: RemotePlayback) => {
+  const startRemoteGuard = () => {
     isRemoteAction.current = true;
-    seekTo(payload.time);
+    if (remoteGuardRef.current) {
+      clearTimeout(remoteGuardRef.current);
+    }
+    remoteGuardRef.current = setTimeout(() => {
+      isRemoteAction.current = false;
+      remoteGuardRef.current = null;
+    }, REMOTE_GUARD_MS);
+  };
+
+  const handleRemotePlayback = useCallback((payload: RemotePlayback) => {
+    startRemoteGuard();
+
+    const shouldSyncTime =
+      payload.type === "seek" ||
+      Math.abs(getCurrentTime() - payload.time) > SYNC_TIME_THRESHOLD_SEC;
+
+    if (shouldSyncTime) {
+      seekTo(payload.time);
+    }
 
     if (payload.type === "play") {
       setPlaying(true);
     } else if (payload.type === "pause") {
       setPlaying(false);
     }
-
-    window.setTimeout(() => {
-      isRemoteAction.current = false;
-    }, 150);
-  };
+  }, []);
 
   const { connected, peerEvents, emitPlay, emitPause, emitSeek } =
     useRoomSocket(id, { onRemotePlayback: handleRemotePlayback });
@@ -121,29 +135,11 @@ export default function RoomPage({
 
   useEffect(() => {
     return () => {
-      if (seekDebounceRef.current) {
-        clearTimeout(seekDebounceRef.current);
+      if (remoteGuardRef.current) {
+        clearTimeout(remoteGuardRef.current);
       }
     };
   }, []);
-
-  const handleTimeUpdate = () => {
-    const current = getCurrentTime();
-    const delta = Math.abs(current - lastTimeRef.current);
-
-    if (!isRemoteAction.current && playing && delta > SEEK_THRESHOLD_SEC) {
-      if (seekDebounceRef.current) {
-        clearTimeout(seekDebounceRef.current);
-      }
-      seekDebounceRef.current = setTimeout(() => {
-        if (!isRemoteAction.current) {
-          emitSeek(getCurrentTime());
-        }
-      }, 400);
-    }
-
-    lastTimeRef.current = current;
-  };
 
   const handlePlay = () => {
     if (isRemoteAction.current) return;
@@ -159,9 +155,7 @@ export default function RoomPage({
 
   const handleSeeked = () => {
     if (isRemoteAction.current) return;
-    const time = getCurrentTime();
-    lastTimeRef.current = time;
-    emitSeek(time);
+    emitSeek(getCurrentTime());
   };
 
   if (error) {
@@ -297,7 +291,6 @@ export default function RoomPage({
                     height="100%"
                     onPlay={handlePlay}
                     onPause={handlePause}
-                    onTimeUpdate={handleTimeUpdate}
                     onSeeked={handleSeeked}
                   />
                 ) : (
