@@ -1,3 +1,5 @@
+import type { TmdbVideo } from "./types";
+
 export async function getFilmsBySearch(query: string, page: number = 1) {
   const res = await fetch(
     `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(query)}&page=${page}`,
@@ -31,6 +33,21 @@ export default async function getFilms(
   }
   const data = await res.json();
   return data;
+}
+
+export function pickYouTubeTrailerSrc(movie: {
+  videos?: { results?: TmdbVideo[] };
+}): string | null {
+  const results = movie.videos?.results ?? [];
+  const isYouTube = (video: TmdbVideo) => video.site === "YouTube";
+  const clip =
+    results.find(
+      (video) => isYouTube(video) && video.type === "Trailer" && video.official,
+    ) ??
+    results.find((video) => isYouTube(video) && video.type === "Trailer") ??
+    results.find((video) => isYouTube(video) && video.type === "Teaser") ??
+    results.find(isYouTube);
+  return clip ? `https://www.youtube.com/watch?v=${clip.key}` : null;
 }
 
 export async function getFilmById(id: string) {

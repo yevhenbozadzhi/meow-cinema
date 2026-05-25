@@ -4,20 +4,21 @@ import { useRouter } from "next/navigation";
 
 export default function Logo() {
   const router = useRouter();
-  const handleClick = () => {
-    router.push("/");
-  };
   return (
-    <div className="flex items-center justify-start mb-4">
+    <button
+      type="button"
+      onClick={() => router.push("/")}
+      className="mx-auto flex cursor-pointer items-center justify-center gap-2 lg:mx-0 lg:justify-start"
+      aria-label="MeowFilms home"
+    >
       <Image
         src="/Logo.svg"
-        alt="Logo"
-        width={40}
-        height={40}
-        className="h-20 w-20 shrink-0 cursor-pointer object-contain"
-        onClick={handleClick}
+        alt=""
+        width={56}
+        height={56}
+        className="h-12 w-12 shrink-0 object-contain sm:h-14 sm:w-14 md:h-16 md:w-16"
       />
-      <h1 className="text-2xl font-bold">MeowFilms</h1>
-    </div>
+      <span className="text-xl font-bold text-white sm:text-2xl">MeowFilms</span>
+    </button>
   );
 }

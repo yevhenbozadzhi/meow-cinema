@@ -15,7 +15,7 @@ export default function Pagination({
 
   return (
     <div
-      className={`flex flex-row items-center justify-center gap-4 mt-4 ${className}`}
+      className={`mt-4 flex flex-wrap items-center justify-center gap-3 sm:gap-4 ${className}`}
     >
       <Button
         type="button"
@@ -26,7 +26,7 @@ export default function Pagination({
         <ArrowLeft className="w-4 h-4" />
       </Button>
 
-      <span className="text-sm text-gray-300">
+      <span className="min-w-[6.5rem] text-center text-sm text-white/90 sm:text-base">
         Page {currentPage} / {totalPages}
       </span>
 

@@ -1,4 +1,4 @@
-import { getFilmById } from "@/lib/films";
+import { getFilmById, pickYouTubeTrailerSrc } from "@/lib/films";
 import Image from "next/image";
 import ReactPlayer from "react-player";
 import { CreateRoomButton } from "@/app/components/CreateRoom";
@@ -10,6 +10,7 @@ export default async function MoviePage({
 }) {
   const id = (await params).id;
   const film = await getFilmById(id);
+  const trailerSrc = pickYouTubeTrailerSrc(film);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 pb-16">
@@ -71,12 +72,21 @@ export default async function MoviePage({
           <div className="lg:col-span-3">
             <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/40 shadow-2xl ring-1 ring-white/5 backdrop-blur-sm">
               <div className="aspect-video w-full">
-                <ReactPlayer
-                  src={film.trailer_url}
-                  controls
-                  width="100%"
-                  height="100%"
-                />
+                {trailerSrc ? (
+                  <ReactPlayer
+                    src={trailerSrc}
+                    controls
+                    width="100%"
+                    height="100%"
+                  />
+                ) : (
+                  <div className="flex h-full min-h-48 flex-col items-center justify-center gap-2 bg-slate-900/80 px-6 text-center text-slate-500">
+                    <p className="text-sm">Trailer not available</p>
+                    <p className="max-w-xs text-xs text-slate-600">
+                      TMDB has no YouTube trailer for this title.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
