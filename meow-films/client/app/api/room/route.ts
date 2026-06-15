@@ -34,7 +34,6 @@ export async function POST(req: Request) {
       { status: 500 },
     );
   }
-
 }
 
 export async function GET(req: Request) {
@@ -42,12 +41,31 @@ export async function GET(req: Request) {
     const auth = req.headers.get("Authorization");
     const { searchParams } = new URL(req.url);
     const roomId = searchParams.get("roomId");
+
     if (!roomId) {
-      return NextResponse.json(
-        { success: false, error: "Room ID is required" },
-        { status: 400 },
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/room/rooms`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: auth ?? "",
+          },
+        },
       );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: data.message ?? data.error ?? "Failed to get rooms",
+          },
+          { status: res.status },
+        );
+      }
+      return NextResponse.json({ success: true, rooms: data.rooms ?? [] });
     }
+
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_API_URL}/api/room/room/${roomId}`,
       {
@@ -58,19 +76,25 @@ export async function GET(req: Request) {
         },
       },
     );
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      throw new Error("Failed to get room");
+      return NextResponse.json(
+        {
+          success: false,
+          error: data.message ?? data.error ?? "Failed to get room",
+        },
+        { status: res.status },
+      );
     }
-    const data = await res.json();
     return NextResponse.json({
       success: true,
       room: data.room,
       stats: data.stats,
     });
   } catch (error) {
-    console.error("Failed to get room:", error);
+    console.error("Failed to get room(s):", error);
     return NextResponse.json(
-      { success: false, error: "Failed to get room" },
+      { success: false, error: "Failed to get room(s)" },
       { status: 500 },
     );
   }

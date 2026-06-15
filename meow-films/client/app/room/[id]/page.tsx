@@ -7,7 +7,9 @@ import { useRouter } from "next/navigation";
 import ReactPlayer from "react-player";
 import { RemotePlayback, useRoomSocket } from "@/lib/useRoomSocket";
 import { Room, TmdbVideo } from "@/lib/types";
-import { ArrowLeftIcon } from "lucide-react";
+import { ArrowLeftIcon, ChevronDown, MessageSquare, X } from "lucide-react";
+import Input from "@/app/components/Input";
+import Button from "@/app/components/Button";
 
 const REMOTE_GUARD_MS = 500;
 /** Only jump timeline when local and remote time differ more than this (seconds). */
@@ -44,6 +46,10 @@ export default function RoomPage({
   const [error, setError] = useState<string | null>(null);
   const [trailerSrc, setTrailerSrc] = useState<string | null>(null);
   const [playing, setPlaying] = useState(false);
+  const [messageInput, setMessageInput] = useState<string>("");
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const chatScrollRef = useRef<HTMLDivElement | null>(null);
 
   const getCurrentTime = () => playerRef.current?.currentTime ?? 0;
 
@@ -83,8 +89,21 @@ export default function RoomPage({
     }
   }, []);
 
-  const { connected, peerEvents, emitPlay, emitPause, emitSeek } =
-    useRoomSocket(id, { onRemotePlayback: handleRemotePlayback });
+  const {
+    connected,
+    peerEvents,
+    emitPlay,
+    emitPause,
+    emitSeek,
+    emitChatMessage,
+    chatMessages,
+    getChatMessages,
+  } = useRoomSocket(id, userId, { onRemotePlayback: handleRemotePlayback });
+
+  useEffect(() => {
+    if (!connected) return;
+    getChatMessages(50);
+  }, [getChatMessages, connected]);
 
   useEffect(() => {
     const fetchRoom = async () => {
@@ -94,7 +113,20 @@ export default function RoomPage({
         router.push("/login");
         return;
       }
-      const res = await fetch(`/api/room?roomId=${id}`, {
+      const res = await fetch(`/api/room/${id}/join`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) {
+        const joinData = await res.json().catch(() => ({}));
+        setError(joinData.error ?? "Failed to join room");
+        return;
+      }
+
+      const roomRes = await fetch(`/api/room?roomId=${id}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -102,7 +134,7 @@ export default function RoomPage({
         },
         credentials: "include",
       });
-      const data = await res.json();
+      const data = await roomRes.json();
       if (data.success) {
         setRoom(data.room);
       } else {
@@ -141,6 +173,27 @@ export default function RoomPage({
     };
   }, []);
 
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    fetch("/api/auth/me", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setUserId(data.id);
+      });
+  }, []);
+
+  useEffect(() => {
+    if (!isChatOpen) return;
+    const el = chatScrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [chatMessages, isChatOpen]);
+
   const handlePlay = () => {
     if (isRemoteAction.current) return;
     setPlaying(true);
@@ -156,6 +209,13 @@ export default function RoomPage({
   const handleSeeked = () => {
     if (isRemoteAction.current) return;
     emitSeek(getCurrentTime());
+  };
+
+  const handleSendMessage = () => {
+    const text = messageInput.trim();
+    if (!text || !userId) return;
+    emitChatMessage(text);
+    setMessageInput("");
   };
 
   if (error) {
@@ -188,10 +248,16 @@ export default function RoomPage({
       ? `https://image.tmdb.org/t/p/w780${room.moviePoster}`
       : null;
 
+  const handleCopeLink = () => {
+    const linkShareUrl = `${window.location.origin}/room/${id}`;
+    navigator.clipboard.writeText(linkShareUrl);
+    alert("Link copied to clipboard");
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 pb-16">
       <header className="sticky top-0 z-20 border-b border-white/5 bg-slate-950/75 backdrop-blur-md">
-        <div className="container mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+        <div className="container mx-auto flex items-center justify-between gap-4 px-4 py-3">
           <Link
             href="/"
             className="flex items-center gap-2 text-sm text-slate-400 transition-colors hover:text-[#c38eb4]"
@@ -305,24 +371,174 @@ export default function RoomPage({
             </div>
           </div>
 
-          <aside className="flex flex-col justify-center rounded-2xl border border-white/10 bg-gray-800/40 p-6 shadow-xl ring-1 ring-white/5 backdrop-blur-sm lg:col-span-2">
-            <h2 className="text-lg font-semibold text-white">
-              Synchronous viewing
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed text-slate-400">
-              Play, pause, and seek are synced with everyone in this room via
-              WebSocket. The indicator above shows your connection to the
-              server.
-            </p>
-            <dl className="mt-6 space-y-3 border-t border-white/10 pt-6 text-sm">
-              <div className="flex justify-between gap-4">
-                <dt className="text-slate-500">Created</dt>
-                <dd className="text-right text-slate-300">
-                  {new Date(room.createdAt).toLocaleString()}
-                </dd>
+          <div className="flex flex-col gap-4 lg:col-span-2">
+            <aside className="shrink-0 rounded-2xl border border-white/10 bg-gray-800/40 p-5 shadow-xl ring-1 ring-white/5 backdrop-blur-sm">
+              <h2 className="text-base font-semibold text-white">
+                Synchronous viewing
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-slate-400">
+                Play, pause, and seek are synced with everyone in this room via
+                WebSocket.
+              </p>
+
+              <Button
+                type="button"
+                onClick={handleCopeLink}
+                className="w-full mt-4"
+              >
+                Copy link
+              </Button>
+              <dl className="mt-4 space-y-2 border-t border-white/10 pt-4 text-sm">
+                <div className="flex justify-between gap-4">
+                  <dt className="text-slate-500">Created</dt>
+                  <dd className="text-right text-slate-300">
+                    {new Date(room.createdAt).toLocaleString()}
+                  </dd>
+                </div>
+              </dl>
+            </aside>
+
+            {/* Spacer keeps page height on desktop; visible frame shrinks when chat is closed */}
+            <div className="relative shrink-0 lg:min-h-[420px]">
+              {!isChatOpen && (
+                <div className="rounded-2xl border border-white/10 bg-gray-800/40 p-3 shadow-xl ring-1 ring-white/5 backdrop-blur-sm">
+                  <button
+                    type="button"
+                    onClick={() => setIsChatOpen(true)}
+                    className="group flex w-full items-center justify-between gap-3 rounded-xl border border-[#c38eb4]/25 bg-gradient-to-r from-[#c38eb4]/15 via-[#c38eb4]/5 to-transparent px-3 py-2.5 text-left transition-all duration-300 hover:border-[#c38eb4]/45 hover:from-[#c38eb4]/25 hover:shadow-lg hover:shadow-[#c38eb4]/10"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#c38eb4]/20 text-[#c38eb4] ring-1 ring-[#c38eb4]/30 transition-transform group-hover:scale-105">
+                        <MessageSquare className="h-4 w-4" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-white">
+                          Open chat
+                        </p>
+                        <p className="truncate text-xs text-slate-400">
+                          {chatMessages.length > 0
+                            ? `${chatMessages.length} message${chatMessages.length === 1 ? "" : "s"}`
+                            : "Discuss the movie together"}
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronDown className="h-4 w-4 shrink-0 text-slate-500 transition-transform duration-300 group-hover:translate-y-0.5 group-hover:text-[#c38eb4]" />
+                  </button>
+                </div>
+              )}
+
+              <div
+                className={`flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-gray-800/40 shadow-xl ring-1 ring-white/5 backdrop-blur-sm transition-opacity duration-300 lg:absolute lg:inset-0 ${
+                  isChatOpen
+                    ? "pointer-events-auto opacity-100 max-lg:fixed max-lg:inset-x-4 max-lg:bottom-4 max-lg:z-40 max-lg:max-h-[min(70vh,520px)] max-lg:shadow-2xl max-lg:shadow-black/50"
+                    : "pointer-events-none opacity-0"
+                }`}
+              >
+                <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#c38eb4]/20 text-[#c38eb4]">
+                      <MessageSquare className="h-3.5 w-3.5" />
+                    </span>
+                    <h2 className="text-base font-semibold text-white">Chat</h2>
+                    {chatMessages.length > 0 && (
+                      <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-slate-300">
+                        {chatMessages.length}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsChatOpen(false)}
+                    aria-label="Close chat"
+                    className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div
+                  ref={chatScrollRef}
+                  className="chat-scroll flex-1 space-y-3 overflow-y-auto bg-slate-950/30 px-4 py-3"
+                >
+                  {chatMessages.length === 0 ? (
+                    <p className="py-8 text-center text-sm text-slate-500">
+                      No messages yet. Say hello!
+                    </p>
+                  ) : (
+                    chatMessages.map((message) => {
+                      const isMine = message.userId === userId;
+
+                      return (
+                        <div
+                          key={message.id}
+                          className={`flex w-full ${isMine ? "justify-end" : "justify-start"}`}
+                        >
+                          <div
+                            className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${
+                              isMine
+                                ? "rounded-br-sm bg-[#c38eb4]/90 text-white"
+                                : "rounded-bl-sm bg-white/10 text-slate-200"
+                            }`}
+                          >
+                            {!isMine && (
+                              <p className="mb-0.5 text-xs font-medium text-[#c38eb4]/90">
+                                {message.username}
+                              </p>
+                            )}
+                            <p className="break-words">{message.message}</p>
+                            {message.createdAt && (
+                              <span
+                                className={`mt-1 block text-[10px] ${isMine ? "text-white/70" : "text-slate-400"}`}
+                              >
+                                {new Date(message.createdAt).toLocaleTimeString(
+                                  [],
+                                  { hour: "2-digit", minute: "2-digit" },
+                                )}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                <div className="flex gap-2 border-t border-white/10 bg-gray-900/50 p-3">
+                  <Input
+                    type="text"
+                    placeholder="Message"
+                    value={messageInput}
+                    className="!border-white/10 !bg-slate-800 !text-white"
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      setMessageInput(e.target.value)
+                    }
+                    onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                      if (e.key === "Enter") {
+                        handleSendMessage();
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    disabled={!messageInput.trim() || !userId}
+                    className="shrink-0 px-4"
+                    onClick={handleSendMessage}
+                  >
+                    Send
+                  </Button>
+                </div>
               </div>
-            </dl>
-          </aside>
+            </div>
+
+            {isChatOpen && (
+              <button
+                type="button"
+                aria-label="Close chat overlay"
+                className="fixed inset-0 z-30 bg-black/40 backdrop-blur-[2px] transition-opacity lg:hidden"
+                onClick={() => setIsChatOpen(false)}
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>

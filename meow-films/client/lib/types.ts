@@ -18,12 +18,12 @@ export type PaginationProps = {
 
 export interface Room {
   id: string;
+  hostUserId: string;
   movieId: string;
   movieTitle: string;
   moviePoster: string | null;
   status: string;
   createdAt: string;
-  updatedAt: string;
 }
 
 export type TmdbVideo = {
