@@ -58,24 +58,25 @@ export default function RegisterPage() {
           type="text"
           name="username"
           placeholder="Username"
-          className="p-2 rounded-md border border-gray-300"
+          className="p-2 rounded-md border border-gray-300 bg-white text-black"
         />
         <input
           type="email"
           name="email"
           placeholder="Email"
-          className="p-2 rounded-md border border-gray-300"
+          className="p-2 rounded-md border border-gray-300 bg-white text-black"
         />
         <input
           type="password"
           name="password"
           placeholder="Password"
-          className="p-2 rounded-md border border-gray-300"
+          className="p-2 rounded-md border border-gray-300 bg-white text-black"
         />
         <input
           type="password"
           name="confirmPassword"
           placeholder="Confirm Password"
+          className="p-2 rounded-md border border-gray-300 bg-white text-black"
         />
         <button
           type="submit"

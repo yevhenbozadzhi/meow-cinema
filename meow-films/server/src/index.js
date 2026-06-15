@@ -9,6 +9,10 @@ import authRoutes from "./routes/auth/auth.js";
 import profileRoutes from "./routes/profile/profile.js";
 import roomRoutes from "./routes/room/room.js";
 import favoritesRoutes from "./routes/profile/favorites.js";
+import {
+  handleChatMessage,
+  handleGetChatMessages,
+} from "./socket/chat/chat.js";
 const app = express();
 const httpServer = http.createServer(app);
 
@@ -51,7 +55,12 @@ io.on("connection", (socket) => {
   socket.on("playback-seek", ({ roomId, time }) => {
     socket.to(roomId).emit("playback-seek", { time, from: socket.id });
   });
-
+  socket.on("chat-message", ({ roomId, message, userId }) => {
+    handleChatMessage(io, roomId, userId, message);
+  });
+  socket.on("chat-get-messages", ({ roomId, limit }) => {
+    handleGetChatMessages(socket, roomId, limit);
+  });
   socket.on("leave-room", (roomId) => {
     socket.leave(roomId);
     console.log(`User ${socket.id} left room ${roomId}`);

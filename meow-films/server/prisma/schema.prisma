@@ -22,6 +22,7 @@ model User {
   hostedRooms   Room[]         @relation("Room_hostUser")
   roomMembers   RoomMember[]
   favorites Favorite[]
+  roomChats RoomChat[]
 }
 
 model Profile {
@@ -72,6 +73,8 @@ model Room {
   createdAt    DateTime     @default(now())
   members      RoomMember[]
   events       RoomEvent[]
+  messages RoomChat[]
+
   @@index([hostUserId])
 }
 
@@ -103,4 +106,15 @@ model Favorite {
   userId String
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@unique([userId, movieId])
+}
+
+model RoomChat { 
+  id String @id @default(uuid())
+  userId String
+  roomId String
+  message String
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+    @@index([roomId, createdAt])
 }

@@ -16,3 +16,11 @@ export type Favorite = {
   video?: boolean;
   adult?: boolean;
 };
+
+export type ChatMessage = {
+  id: string;
+  userId: string;
+  message: string;
+  createdAt: string;
+  username: string;
+};
