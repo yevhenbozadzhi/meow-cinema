@@ -24,3 +24,12 @@ export type ChatMessage = {
   createdAt: string;
   username: string;
 };
+
+export type AIChatMessage = {
+  id: string;
+  userId: string;
+  content: string;
+  role: "USER" | "ASSISTANT";
+  createdAt: string;
+  isTyping?: boolean;
+};
