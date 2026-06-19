@@ -13,6 +13,7 @@ import {
   handleChatMessage,
   handleGetChatMessages,
 } from "./socket/chat/chat.js";
+import aiChatRoutes from "./routes/ai-chat/ai.js";
 const app = express();
 const httpServer = http.createServer(app);
 
@@ -75,6 +76,7 @@ io.on("connection", (socket) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/room", roomRoutes);
+app.use("/api/ai-chat", aiChatRoutes);
 
 app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok" });
