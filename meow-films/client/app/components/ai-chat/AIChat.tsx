@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { Bot, ChevronUp, MessageSquare, X } from "lucide-react";
 import { AIChatMessage } from "../../types/types";
 import Button from "../Button";
 import { getAIChatMessages, sendAIChatMessage, typeText } from "@/lib/ai-chat";
-
+import { getToken } from "@/lib/token";
 function TypingDots() {
   return (
     <span className="inline-flex items-center gap-1 py-1">
@@ -21,8 +22,29 @@ export default function AIChat() {
   const [messageInput, setMessageInput] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const stopTypeTextRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    void getToken().then((token) => setIsLoggedIn(!!token));
+  }, []);
+
+  const showAuthError = (assistantId: string) => {
+    setMessages((prev) =>
+      prev.map((message) =>
+        message.id === assistantId
+          ? {
+              ...message,
+              content: "",
+              isTyping: false,
+              requiresAuth: true,
+            }
+          : message,
+      ),
+    );
+    setIsSending(false);
+  };
 
   const handleSendMessage = async () => {
     const text = messageInput.trim();
@@ -54,7 +76,12 @@ export default function AIChat() {
 
     try {
       const sentMessage = await sendAIChatMessage(text);
-      if (!sentMessage?.result) {
+
+      if (!sentMessage.ok) {
+        if (sentMessage.reason === "unauthorized") {
+          showAuthError(assistantId);
+          return;
+        }
         throw new Error("Failed to send message");
       }
 
@@ -105,19 +132,17 @@ export default function AIChat() {
     const fetchMessages = async () => {
       try {
         const data = await getAIChatMessages();
-        if (!data) {
+        if (data === null) {
           throw new Error("Failed to fetch messages");
         }
         setMessages(
-          data.map((item: AIChatMessage) => {
-            return {
-              id: item.id,
-              userId: item.userId,
-              content: item.content,
-              role: item.role,
-              createdAt: item.createdAt,
-            };
-          }),
+          data.map((item: AIChatMessage) => ({
+            id: item.id,
+            userId: item.userId,
+            content: item.content,
+            role: item.role,
+            createdAt: item.createdAt,
+          })),
         );
       } catch (error) {
         console.error(error);
@@ -203,7 +228,9 @@ export default function AIChat() {
           >
             {messages.length === 0 ? (
               <p className="py-8 text-center text-sm text-slate-500">
-                No messages yet. Ask me about films!
+                {isLoggedIn
+                  ? "No messages yet. Ask me about films!"
+                  : "Sign in to ask the AI about films."}
               </p>
             ) : (
               messages.map((message) => {
@@ -227,7 +254,25 @@ export default function AIChat() {
                         </p>
                       )}
                       <p className="break-words whitespace-pre-wrap">
-                        {message.isTyping && !message.content ? (
+                        {message.requiresAuth ? (
+                          <span className="text-slate-300">
+                            Please{" "}
+                            <Link
+                              href="/login"
+                              className="font-medium text-[#c38eb4] underline-offset-2 hover:underline"
+                            >
+                              sign in
+                            </Link>{" "}
+                            or{" "}
+                            <Link
+                              href="/register"
+                              className="font-medium text-[#c38eb4] underline-offset-2 hover:underline"
+                            >
+                              register
+                            </Link>{" "}
+                            to use AI chat.
+                          </span>
+                        ) : message.isTyping && !message.content ? (
                           <TypingDots />
                         ) : (
                           message.content

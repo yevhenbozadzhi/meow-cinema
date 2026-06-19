@@ -32,4 +32,5 @@ export type AIChatMessage = {
   role: "USER" | "ASSISTANT";
   createdAt: string;
   isTyping?: boolean;
+  requiresAuth?: boolean;
 };

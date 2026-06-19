@@ -1,10 +1,14 @@
 import { getToken } from "./token";
 
+export type AIChatSendResult =
+  | { ok: true; result: string }
+  | { ok: false; reason: "unauthorized" | "failed" };
+
 export async function getAIChatMessages() {
   try {
     const token = await getToken();
     if (!token) {
-      throw new Error("Unauthorized");
+      return [];
     }
     const response = await fetch("/api/ai-chat", {
       method: "GET",
@@ -13,6 +17,9 @@ export async function getAIChatMessages() {
         Authorization: `Bearer ${token}`,
       },
     });
+    if (response.status === 401) {
+      return [];
+    }
     if (!response.ok) {
       throw new Error("Failed to fetch AI chat messages");
     }
@@ -24,11 +31,13 @@ export async function getAIChatMessages() {
   }
 }
 
-export async function sendAIChatMessage(message: string) {
+export async function sendAIChatMessage(
+  message: string,
+): Promise<AIChatSendResult> {
   try {
     const token = await getToken();
     if (!token) {
-      throw new Error("Unauthorized");
+      return { ok: false, reason: "unauthorized" };
     }
     const res = await fetch("/api/ai-chat", {
       method: "POST",
@@ -38,14 +47,17 @@ export async function sendAIChatMessage(message: string) {
       },
       body: JSON.stringify({ message }),
     });
+    if (res.status === 401) {
+      return { ok: false, reason: "unauthorized" };
+    }
     if (!res.ok) {
-      throw new Error("Failed to send AI chat message");
+      return { ok: false, reason: "failed" };
     }
     const data = await res.json();
-    return data;
+    return { ok: true, result: data.result ?? "" };
   } catch (error) {
     console.error("Error sending AI chat message:", error);
-    return null;
+    return { ok: false, reason: "failed" };
   }
 }
 
