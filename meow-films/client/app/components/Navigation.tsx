@@ -1,9 +1,10 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Logo from "./Logo";
 import { usePathname } from "next/navigation";
 import { NavAuthSkeleton } from "./skeleton/Skeleton";
+import { resolveAuthUser } from "@/lib/auth-session";
 
 const NAVIGATION_ITEMS = [
   { label: "Movies", href: "/movie" },
@@ -18,42 +19,33 @@ export default function Navigation() {
   const [isAuth, setIsAuth] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   const pathname = usePathname();
+  const hasResolvedAuth = useRef(false);
 
   useEffect(() => {
+    let cancelled = false;
+
     const fetchMe = async () => {
-      setAuthLoading(true);
-      const token = localStorage.getItem("token");
-      if (!token) {
-        setIsAuth(false);
-        setProfile(null);
-        setAuthLoading(false);
-        return;
+      if (!hasResolvedAuth.current) {
+        setAuthLoading(true);
       }
+
       try {
-        const res = await fetch("/api/auth/me", {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setProfile(data);
-          setIsAuth(true);
-        } else {
-          setIsAuth(false);
-          setProfile(null);
-        }
-      } catch {
-        setIsAuth(false);
-        setProfile(null);
+        const user = await resolveAuthUser();
+        if (cancelled) return;
+
+        setProfile(user);
+        setIsAuth(!!user);
+        hasResolvedAuth.current = true;
       } finally {
         setAuthLoading(false);
       }
     };
 
     void fetchMe();
+
+    return () => {
+      cancelled = true;
+    };
   }, [pathname]);
 
   return (

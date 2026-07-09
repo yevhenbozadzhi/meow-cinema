@@ -13,13 +13,17 @@ export async function POST(request: Request) {
         credentials: "include",
       },
     );
+    const contentType = res.headers.get("content-type") ?? "";
+    const data = contentType.includes("application/json")
+      ? await res.json()
+      : null;
     if (!res.ok) {
       return NextResponse.json(
-        { error: "Refresh failed" },
+        { error: data?.message ?? data?.error ?? "Refresh failed" },
         { status: res.status },
       );
     }
-    return NextResponse.json({ message: "Refresh successful" });
+    return NextResponse.json(data);
   } catch (error: unknown) {
     return NextResponse.json(
       {

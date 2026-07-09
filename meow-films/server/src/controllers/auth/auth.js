@@ -120,21 +120,27 @@ export const logoutController = async (req, res) => {
 export const refreshController = async (req, res) => {
   try {
     const { refreshToken } = req.cookies;
-    if (refreshToken) {
-      const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
-      const newAccessToken = jwt.sign(
-        { userId: decoded.userId },
-        process.env.JWT_ACCESS_SECRET,
-        { expiresIn: "15m" },
-      );
-      return res
-        .status(200)
-        .json({ success: true, accessToken: newAccessToken });
+    if (!refreshToken) {
+      return res.status(401).json({
+        success: false,
+        message: "Refresh token not found",
+      });
     }
-  } catch (error) {
-    const statusCode = error.statusCode ?? 500;
+
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+    const newAccessToken = jwt.sign(
+      { userId: decoded.userId },
+      process.env.JWT_ACCESS_SECRET,
+      { expiresIn: process.env.ACCESS_TOKEN_TTL ?? "1h" },
+    );
     return res
-      .status(statusCode)
-      .json({ success: false, message: "Internal server error" });
+      .status(200)
+      .json({ success: true, accessToken: newAccessToken });
+  } catch (error) {
+    const statusCode = error.statusCode ?? 401;
+    return res.status(statusCode).json({
+      success: false,
+      message: error.message ?? "Unauthorized",
+    });
   }
 };
