@@ -8,6 +8,7 @@ import { Trash2, LogOut } from "lucide-react";
 import Button from "@/app/components/Button";
 import { Room } from "@/lib/types";
 import Pagination from "../components/Pagination";
+import { RoomsGridSkeleton } from "../components/skeleton/Skeleton";
 
 export default function RoomIndexPage() {
   const router = useRouter();
@@ -147,11 +148,7 @@ export default function RoomIndexPage() {
           </p>
         </div>
 
-        {loading && (
-          <div className="flex justify-center py-16">
-            <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#c38eb4]/30 border-t-[#c38eb4]" />
-          </div>
-        )}
+        {loading && <RoomsGridSkeleton />}
 
         {!loading && error && (
           <div className="rounded-2xl border border-red-500/30 bg-red-950/20 p-4 text-center text-sm text-red-300">

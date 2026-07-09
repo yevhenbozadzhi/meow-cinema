@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeftIcon } from "lucide-react";
 import { Favorites } from "../components/Favorites";
+import { ProfileSkeleton } from "../components/skeleton/Skeleton";
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -94,11 +95,7 @@ export default function ProfilePage() {
   }, [router]);
 
   if (loading) {
-    return (
-      <div className="container mx-auto flex flex-col items-center justify-center h-screen">
-        <p>Loading profile...</p>
-      </div>
-    );
+    return <ProfileSkeleton />;
   }
 
   if (error) {

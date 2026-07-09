@@ -9,6 +9,7 @@ import Input from "./Input";
 import { Search } from "lucide-react";
 import { addFavorite, getFavorites } from "@/lib/favorites";
 import Pagination from "./Pagination";
+import { FilmsGridSkeleton } from "./skeleton/Skeleton";
 
 type Category = "popular" | "top_rated" | "upcoming" | "now_playing";
 
@@ -129,11 +130,7 @@ export default function FilmsCatalog() {
         </div>
       </div>
 
-      {loading && movies.length === 0 ? (
-        <p className="py-12 text-center text-sm text-white/80 sm:text-base">
-          Loading movies…
-        </p>
-      ) : null}
+      {loading && movies.length === 0 ? <FilmsGridSkeleton /> : null}
 
       {!loading && movies.length === 0 ? (
         <p className="py-12 text-center text-sm text-white/80 sm:text-base">

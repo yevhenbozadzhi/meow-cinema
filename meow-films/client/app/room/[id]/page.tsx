@@ -10,6 +10,7 @@ import { Room, TmdbVideo } from "@/lib/types";
 import { ArrowLeftIcon, ChevronDown, MessageSquare, X } from "lucide-react";
 import Input from "@/app/components/Input";
 import Button from "@/app/components/Button";
+import { RoomPageSkeleton } from "@/app/components/skeleton/Skeleton";
 
 const REMOTE_GUARD_MS = 500;
 /** Only jump timeline when local and remote time differ more than this (seconds). */
@@ -235,12 +236,7 @@ export default function RoomPage({
   }
 
   if (!room) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 px-4">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#c38eb4]/30 border-t-[#c38eb4]" />
-        <p className="text-sm text-slate-400">Loading room…</p>
-      </div>
-    );
+    return <RoomPageSkeleton />;
   }
 
   const posterUrl =

@@ -2,11 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Bot, ChevronUp, MessageSquare, X } from "lucide-react";
 import { AIChatMessage } from "../../types/types";
 import Button from "../Button";
+import { ChatMessageSkeleton } from "../skeleton/Skeleton";
+import { cn } from "@/lib/cn";
 import { getAIChatMessages, sendAIChatMessage, typeText } from "@/lib/ai-chat";
 import { getToken } from "@/lib/token";
+
 function TypingDots() {
   return (
     <span className="inline-flex items-center gap-1 py-1">
@@ -18,10 +22,14 @@ function TypingDots() {
 }
 
 export default function AIChat() {
+  const pathname = usePathname();
+  const isRoomWatchPage = /^\/room\/[^/]+$/.test(pathname ?? "");
+
   const [messages, setMessages] = useState<AIChatMessage[]>([]);
   const [messageInput, setMessageInput] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const stopTypeTextRef = useRef<(() => void) | null>(null);
@@ -29,6 +37,11 @@ export default function AIChat() {
   useEffect(() => {
     void getToken().then((token) => setIsLoggedIn(!!token));
   }, []);
+
+  useEffect(() => {
+    if (!isRoomWatchPage) return;
+    setIsOpen(false);
+  }, [isRoomWatchPage, pathname]);
 
   const showAuthError = (assistantId: string) => {
     setMessages((prev) =>
@@ -130,6 +143,7 @@ export default function AIChat() {
 
   useEffect(() => {
     const fetchMessages = async () => {
+      setIsLoadingHistory(true);
       try {
         const data = await getAIChatMessages();
         if (data === null) {
@@ -146,6 +160,8 @@ export default function AIChat() {
         );
       } catch (error) {
         console.error(error);
+      } finally {
+        setIsLoadingHistory(false);
       }
     };
     void fetchMessages();
@@ -160,7 +176,7 @@ export default function AIChat() {
 
   return (
     <>
-      {isOpen && (
+      {isOpen && !isRoomWatchPage && (
         <button
           type="button"
           aria-label="Close AI chat overlay"
@@ -169,18 +185,36 @@ export default function AIChat() {
         />
       )}
 
-      <div className="fixed bottom-4 right-4 z-50 flex w-[min(100vw-2rem,22rem)] flex-col items-end gap-2">
+      <div
+        className={cn(
+          "fixed z-50 flex flex-col items-end gap-2",
+          isRoomWatchPage
+            ? "max-lg:top-16 max-lg:right-4 max-lg:bottom-auto max-lg:left-auto max-lg:z-30 max-lg:w-auto bottom-4 right-4 w-[min(100vw-2rem,22rem)]"
+            : "bottom-4 right-4 w-[min(100vw-2rem,22rem)]",
+        )}
+      >
         {!isOpen && (
           <button
             type="button"
             onClick={() => setIsOpen(true)}
-            className="group flex w-full items-center justify-between gap-3 rounded-2xl border border-[#c38eb4]/25 bg-gray-900/95 px-3 py-2.5 text-left shadow-xl shadow-black/30 ring-1 ring-white/10 backdrop-blur-md transition-all duration-300 hover:border-[#c38eb4]/45 hover:shadow-[#c38eb4]/10"
+            aria-label="Open AI assistant"
+            className={cn(
+              "group text-left shadow-xl shadow-black/30 ring-1 ring-white/10 backdrop-blur-md transition-all duration-300",
+              isRoomWatchPage
+                ? "flex h-12 w-12 items-center justify-center rounded-full border border-[#c38eb4]/35 bg-gray-900/95 max-lg:hover:scale-105 lg:w-full lg:items-center lg:justify-between lg:gap-3 lg:rounded-2xl lg:border-[#c38eb4]/25 lg:px-3 lg:py-2.5 lg:hover:border-[#c38eb4]/45"
+                : "flex w-full items-center justify-between gap-3 rounded-2xl border border-[#c38eb4]/25 bg-gray-900/95 px-3 py-2.5 hover:border-[#c38eb4]/45 hover:shadow-[#c38eb4]/10",
+            )}
           >
-            <div className="flex items-center gap-3">
+            <div
+              className={cn(
+                "flex items-center",
+                isRoomWatchPage ? "lg:gap-3" : "gap-3",
+              )}
+            >
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#c38eb4]/20 text-[#c38eb4] ring-1 ring-[#c38eb4]/30 transition-transform group-hover:scale-105">
                 <Bot className="h-4 w-4" />
               </span>
-              <div className="min-w-0">
+              <div className="hidden min-w-0 lg:block">
                 <p className="text-sm font-medium text-white">AI assistant</p>
                 <p className="truncate text-xs text-slate-400">
                   {messages.length > 0
@@ -189,16 +223,23 @@ export default function AIChat() {
                 </p>
               </div>
             </div>
-            <ChevronUp className="h-4 w-4 shrink-0 text-slate-500 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:text-[#c38eb4]" />
+            <ChevronUp className="hidden h-4 w-4 shrink-0 text-slate-500 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:text-[#c38eb4] lg:block" />
           </button>
         )}
 
         <div
-          className={`flex w-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-gray-800/95 shadow-2xl shadow-black/40 ring-1 ring-white/10 backdrop-blur-md transition-all duration-300 ${
+          className={cn(
+            "flex w-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-gray-800/95 shadow-2xl shadow-black/40 ring-1 ring-white/10 backdrop-blur-md transition-all duration-300",
+            isRoomWatchPage && "max-lg:max-w-[min(100vw-2rem,18rem)]",
             isOpen
-              ? "pointer-events-auto max-h-[min(70vh,28rem)] opacity-100"
-              : "pointer-events-none h-0 max-h-0 opacity-0"
-          }`}
+              ? cn(
+                  "pointer-events-auto opacity-100",
+                  isRoomWatchPage
+                    ? "max-lg:max-h-[min(50vh,20rem)] max-h-[min(70vh,28rem)]"
+                    : "max-h-[min(70vh,28rem)]",
+                )
+              : "pointer-events-none h-0 max-h-0 opacity-0",
+          )}
         >
           <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
             <div className="flex items-center gap-2">
@@ -226,7 +267,13 @@ export default function AIChat() {
             ref={chatScrollRef}
             className="chat-scroll min-h-0 flex-1 space-y-3 overflow-y-auto bg-slate-950/30 px-4 py-3"
           >
-            {messages.length === 0 ? (
+            {isLoadingHistory ? (
+              <div className="space-y-3 py-2">
+                <ChatMessageSkeleton align="right" />
+                <ChatMessageSkeleton align="left" />
+                <ChatMessageSkeleton align="right" />
+              </div>
+            ) : messages.length === 0 ? (
               <p className="py-8 text-center text-sm text-slate-500">
                 {isLoggedIn
                   ? "No messages yet. Ask me about films!"

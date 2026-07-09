@@ -5,6 +5,7 @@ import { Favorite } from "../types/types";
 import Link from "next/link";
 import { Star, X } from "lucide-react";
 import Pagination from "./Pagination";
+import { FavoritesSkeleton } from "./skeleton/Skeleton";
 
 const FAVORITES_PAGE_SIZE = 9;
 
@@ -68,7 +69,12 @@ export function Favorites() {
   };
 
   if (loading) {
-    return <div className="text-center py-8 text-gray-400">Loading...</div>;
+    return (
+      <div className="container mx-auto mt-8">
+        <h2 className="mb-4 text-xl font-bold text-white">My Favorites</h2>
+        <FavoritesSkeleton />
+      </div>
+    );
   }
 
   if (error) {
@@ -84,7 +90,7 @@ export function Favorites() {
   return (
     <div className="mt-8 container mx-auto">
       <h2 className="text-xl font-bold text-white mb-4">My Favorites</h2>
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {pageItems.map((movie) => (
           <div
             key={movie.movieId}
@@ -94,7 +100,7 @@ export function Favorites() {
               <img
                 src={`https://image.tmdb.org/t/p/w300${movie.poster_path}`}
                 alt={movie.title}
-                className="w-90 h-90 rounded object-cover"
+                className="aspect-[2/3] w-full rounded object-cover"
               />
               <div className="mt-1 flex items-center justify-between gap-1">
                 <h3 className="truncate text-xs font-medium text-white">

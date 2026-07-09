@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import Logo from "./Logo";
 import { usePathname } from "next/navigation";
+import { NavAuthSkeleton } from "./skeleton/Skeleton";
 
 const NAVIGATION_ITEMS = [
   { label: "Movies", href: "/movie" },
@@ -15,30 +16,40 @@ const navLinkClass =
 export default function Navigation() {
   const [profile, setProfile] = useState<{ username: string } | null>(null);
   const [isAuth, setIsAuth] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
   const pathname = usePathname();
 
   useEffect(() => {
     const fetchMe = async () => {
+      setAuthLoading(true);
       const token = localStorage.getItem("token");
       if (!token) {
         setIsAuth(false);
         setProfile(null);
+        setAuthLoading(false);
         return;
       }
-      const res = await fetch("/api/auth/me", {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setProfile(data);
-        setIsAuth(true);
-      } else {
+      try {
+        const res = await fetch("/api/auth/me", {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setProfile(data);
+          setIsAuth(true);
+        } else {
+          setIsAuth(false);
+          setProfile(null);
+        }
+      } catch {
         setIsAuth(false);
         setProfile(null);
+      } finally {
+        setAuthLoading(false);
       }
     };
 
@@ -59,7 +70,9 @@ export default function Navigation() {
         </div>
 
         <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-end">
-          {isAuth ? (
+          {authLoading ? (
+            <NavAuthSkeleton />
+          ) : isAuth ? (
             <Link href="/profile" className={navLinkClass}>
               {profile?.username}
             </Link>
